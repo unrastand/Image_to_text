@@ -39,7 +39,7 @@ This Python script captures an image from the system camera and uses Tesseract O
    python camera_text_recognition.py
    ```
 
-4. Open your system camera, capture an image, recognize text from the image, and print the recognized text.
+4. your system camera is automatically opened, capture an image, recognize text from the image, and print the recognized text.
 
  
 #DIY
