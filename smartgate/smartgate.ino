@@ -67,7 +67,7 @@ if(Serial.read()=="open"){
   while(digitalRead(limitSwitch==0){
   forward();}
   stopmotor();
-  delay(500); // Wait for half a second 
+  delay(1000); // Wait for a second 
   //to add other motor after ir sensor
   
 }
@@ -76,6 +76,7 @@ if(Serial.read()=="open"){
   stopmotor();
   delay(500);
 // Wait for half a second 
-  //to add other motor after ir sensor
+  //to add other motion after ir sensor is included if
+  // you want, to prevent gate collision with vehicle 
   
   }
