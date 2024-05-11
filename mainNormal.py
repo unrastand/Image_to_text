@@ -1,5 +1,7 @@
 import cv2
 import pytesseract
+import serial #install pyserial library
+import time
 
 # Set the path to Tesseract executable (change this according to your installation)
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -13,7 +15,7 @@ allowed_plates = ["ABS-234","23S-DAF"]
 serial_port = '/dev/ttyUSB0'  # Update this with your Arduino Nano's serial port
 baud_rate = 9600
 ser = serial.Serial(serial_port, baud_rate, timeout=1)
-
+time.sleep(2) #wait fir arduino to initialize
 
 # Function to send command to Arduino Nano to control motors
 def send_command(command):
