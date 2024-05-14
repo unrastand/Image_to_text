@@ -81,7 +81,7 @@ void loop() {
     lcd.print("MOVE YOUR CAR CLOSER");
   }
 
-  if (Serial.read() == "open") { //can be changed to digits 
+  if (Serial.read() == "open") {
 
     lcd.clear();
     lcd.setCursor(0, 0);
