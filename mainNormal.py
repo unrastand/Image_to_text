@@ -1,43 +1,59 @@
 import cv2
 import pytesseract
-import serial #install pyserial library
+import serial  # install pyserial library
 import time
+from difflib import SequenceMatcher 
+import license_database
 
 # Set the path to Tesseract executable (change this according to your installation)
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 
-#list of saved license plates
+# to check how well the plate numbers matches ones in database
+def similar(a, b):
+    return SequenceMatcher(None, a, b).ratio()
 
-allowed_plates = ["ABS-234","23S-DAF"]
+
+def most_similar_license(License):
+    most_similar = None
+    high_score = 0
+    for l in license_database.read_license():
+        score = similar(l[0], License)
+        if score > high_score:
+            high_score = score
+            most_similar = l[0]
+    if most_similar is None or high_score < 0.7:
+        return None
+    return most_similar
+
+
+def check_image(img):
+    cropped_img = crop_black_quadrilateral(img)
+    # checks if image exists or contain any value
+    if img.any():
+        try:
+            license_text = get_text(cropped_img).upper()
+            license_database_text = most_similar_license(license_text)
+            if license_database_text is None and len(license_text) > 5:
+                print(f"Could not find {license_text} license plate in license_database")
+            else:
+                print("The license plate was found as: " + license_database_text)
+                print("open")
+                # sends data to open the gate
+                send_data("open")
+                return "quit"
+        except:
+            pass
+    else:
+        pass
+
 
 # Serial port configuration
 serial_port = '/dev/ttyUSB0'  # Update this with your Arduino Nano's serial port
 baud_rate = 9600
 ser = serial.Serial(serial_port, baud_rate, timeout=1)
-time.sleep(2) #wait fir arduino to initialize
+time.sleep(2)  # wait fir arduino to initialize
 
-# Function to send command to Arduino Nano to control motors
-def send_command(command):
-    ser.write(command.encode())
-
-# Function to capture image from system camera
-def capture_image():
-    # Initialize the camera
-    cap = cv2.VideoCapture(0)
-
-    # Check if the camera is opened correctly
-    if not cap.isOpened():
-        print("Error: Could not open camera.")
-        return
-
-    # Capture a frame
-    ret, frame = cap.read()
-
-    # Release the camera
-    cap.release()
-
-    return frame
 
 # Function to recognize text from the captured image
 def recognize_text(image):
@@ -65,34 +81,80 @@ def send_data(data):
 
 
 
-# Main function
-def main():
+ 
+def crop_black_quadrilateral(img):
+    # img = cv2.resize(img, (300, 300))
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.bilateralFilter(gray, 11, 17, 17)
+    edged = cv2.Canny(gray, 30, 200)
+    cv2.imshow("edged", edged)
+    cnts, new = cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    image1 = img.copy()
+    cv2.drawContours(image1, cnts, -1, (0, 255, 0), 3)
+    cv2.imshow("contours", image1)
+    cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:30]
+    image2 = img.copy()
+    cv2.drawContours(image2, cnts, -1, (0, 255, 0), 3)
+    cv2.imshow("Top 30 contours", image2)
+    # cv2.waitKey(0)
+    i = 7
+    for c in cnts:
+        perimeter = cv2.arcLength(c, True)
+        approx = cv2.approxPolyDP(c, 0.018 * perimeter, True)
+        if len(approx) == 4:
+            x, y, w, h = cv2.boundingRect(c)
+            new_img = img[y:y + h, x:x + w]
+            new_path = './' + str(i) + '.jpg'
+            cv2.imwrite(new_path, new_img)
+            return new_img
+        i += 1
 
-    # Capture image from camera
-    image = capture_image()
 
-    # Check if image capture was successful
-    if image is not None:
-        # Recognize text from the captured image
-        text = recognize_text(image)
 
-        #check to open and close the gate 
-        for a in allowed_plates:
-            if text == a:
-                send_data("open")
-            
 
-        # Print the recognized text 
-        # please confirm what it prints from camera and saved to allowed_plates list
-        print("Recognized Text:")
-        print(text)
-    else:
-        print("Error: Failed to capture image.")
+def get_text(file_path):
+    value = pytesseract.image_to_string(file_path, config='-c tessedit_char_whitelist=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ --psm 8', lang='eng')
+    def charToNumber(char: str):
+        char_dict = {
+                "0": "O",
+                "1": "I",
+                "3": "B",
+                "4": "A",
+                "5": "S",
+                "6": "G",
+                "7": "Z",
+                "8": "B",
+        }
+        return char_dict.get(char, char)
+    if len(value) < 4:
+        raise Exception("Could not generate a valid plate number")
+    if len(set(value)&set("0123456789")) == 0:
+        return ""
+    value = value.strip()
+    return charToNumber(value[0]) + charToNumber(value[1]) + value[2:-2] + charToNumber(value[-2]) + charToNumber(value[-1]) 
+
 
 if __name__ == "__main__":
     while True:
-        # 1 means data from arduino to start process
+        # 1 means data from arduino to start process and continues while the car is present 
+        while receive_data() == 1:
+            video = cv2.VideoCapture(0)        
 
-        if receive_data() == 1:
-            main()
-        
+            if video.isOpened():
+                ret, frame = video.read()
+                if frame is None:
+                    continue
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                cv2.imshow('Frame', gray)  # comment this out when putting it finally, this it to test, to reduce memory usage
+                value = pytesseract.image_to_string(gray,
+                                                    config='-c tessedit_char_whitelist=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ --psm 8',
+                                                    lang='eng')
+                c = check_image(frame)
+                # if button q or license recognises camera
+                if (cv2.waitKey(1) == ord("q")) or c == "quit":
+                    video.release()
+                    break
+
+                else:
+                    video.release()
+                

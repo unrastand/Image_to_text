@@ -73,7 +73,7 @@ void loop() {
   if (distance_cm < 200) {
     Serial.print(1);
   } else {
-
+    Serial.print(0);
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("SMART GATE");
