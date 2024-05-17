@@ -9,6 +9,12 @@ import license_database
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 
+# Serial port configuration
+serial_port = '/dev/ttyUSB0'  # Update this with your Arduino Nano's serial port
+baud_rate = 9600
+ser = serial.Serial(serial_port, baud_rate, timeout=1)
+time.sleep(2)  # wait fir arduino to initialize
+
 # to check how well the plate numbers matches ones in database
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
@@ -47,12 +53,6 @@ def check_image(img):
     else:
         pass
 
-
-# Serial port configuration
-serial_port = '/dev/ttyUSB0'  # Update this with your Arduino Nano's serial port
-baud_rate = 9600
-ser = serial.Serial(serial_port, baud_rate, timeout=1)
-time.sleep(2)  # wait fir arduino to initialize
 
 
 # Function to recognize text from the captured image
