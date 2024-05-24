@@ -58,7 +58,7 @@ void loop() {
   digitalWrite(trigPin, LOW);
   long duration = pulseIn(echoPin, HIGH);
   float distance_cm = duration * 0.0343 / 2;
- Serial.print(" ");
+  Serial.
   if (distance_cm < 30) {
     Serial.println("1");
     delay(100);
@@ -72,7 +72,7 @@ void loop() {
 
   if (Serial.available() >0 ) {
     String command = Serial.readString();
-    command.trim();
+   
     if (command == "open") {
       digitalWrite(13,1);
       lcd.clear();
